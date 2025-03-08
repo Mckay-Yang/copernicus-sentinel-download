@@ -29,7 +29,6 @@ class SentinelDownloader:
         self._token = self._get_token()
         self._download_list = self._get_download_list()
         self._thread_num = 4 # The maximum number of threads supported by the copericus server is 4
-        self._threads = []
         self._retry = 10
         self._breakpoint_retry_flag = False # breakpoint download is not supported by the copericus server
 
@@ -84,16 +83,13 @@ class SentinelDownloader:
     def download(self):
         if not os.path.exists(self.download_path):
             os.makedirs(self.download_path)
+        sem = threading.Semaphore(self._thread_num)
         for item in self._download_list:
-            while len(self._threads) >= self._thread_num:
-                time.sleep(1)
-            t = threading.Thread(target=self._download_thread, args=(item,))
+            sem.acquire()
+            t = threading.Thread(target=self._download_thread, args=(item, sem))
             t.start()
-            self._threads.append(t)
-        for t in self._threads:
-            t.join()
 
-    def _download_thread(self, item: dict):
+    def _download_thread(self, item: dict, sem: threading.Semaphore):
         for i in range(self._retry):
             try:
                 self._download_item(item)
@@ -103,9 +99,7 @@ class SentinelDownloader:
                 time.sleep(1)
                 if i == self._retry - 1:
                     self._log_err(f'Download {item["Name"]} failed.')
-        thread = threading.current_thread()
-        if thread in self._threads:
-            self._threads.remove(thread)
+        sem.release()
 
     def _download_item(self, item: dict):
         try:
