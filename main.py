@@ -203,6 +203,9 @@ if __name__ == '__main__':
         download_sequence = 'desc'
 
     while t_start <= pd.to_datetime(end_time):
+        if t_start > pd.to_datetime(end_time):
+            break
+        
         if t_end > pd.to_datetime(end_time):
             t_end = pd.to_datetime(end_time)
 
